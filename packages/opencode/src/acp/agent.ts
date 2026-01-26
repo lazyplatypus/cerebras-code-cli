@@ -335,18 +335,18 @@ export namespace ACP {
       log.info("initialize", { protocolVersion: params.protocolVersion })
 
       const authMethod: AuthMethod = {
-        description: "Run `opencode auth login` in the terminal",
-        name: "Login with opencode",
-        id: "opencode-login",
+        description: "Run `oc auth login` in the terminal",
+        name: "Login with Cerebras Code",
+        id: "cerebras-code-login",
       }
 
       // If client supports terminal-auth capability, use that instead.
       if (params.clientCapabilities?._meta?.["terminal-auth"] === true) {
         authMethod._meta = {
           "terminal-auth": {
-            command: "opencode",
+            command: "oc",
             args: ["auth", "login"],
-            label: "OpenCode Login",
+            label: "Cerebras Code Login",
           },
         }
       }
@@ -366,7 +366,7 @@ export namespace ACP {
         },
         authMethods: [authMethod],
         agentInfo: {
-          name: "OpenCode",
+          name: "Cerebras Code",
           version: Installation.VERSION,
         },
       }

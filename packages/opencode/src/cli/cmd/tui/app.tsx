@@ -194,14 +194,14 @@ function App() {
   // Update terminal window title based on current route and session
   createEffect(() => {
     if (route.data.type === "home") {
-      renderer.setTerminalTitle("opencode")
+      renderer.setTerminalTitle("Cerebras Code")
       return
     }
 
     if (route.data.type === "session") {
       const session = sync.session.get(route.data.sessionID)
       if (!session || SessionApi.isDefaultTitle(session.title)) {
-        renderer.setTerminalTitle("opencode")
+        renderer.setTerminalTitle("Cerebras Code")
         return
       }
 
@@ -494,7 +494,7 @@ function App() {
       title: "Open docs",
       value: "docs.open",
       onSelect: () => {
-        open("https://opencode.ai/docs").catch(() => {})
+        open("https://cerebras.ai/blog/cerebras-coder-a-new-ai-coding-agent").catch(() => {})
         dialog.clear()
       },
       category: "System",
@@ -650,23 +650,6 @@ function App() {
     }, 500)
   })
 
-  event.on(Installation.Event.Updated.type, (evt) => {
-    toast.show({
-      variant: "success",
-      title: "Update Complete",
-      message: `OpenCode updated to v${evt.properties.version}`,
-      duration: 5000,
-    })
-  })
-
-  event.on(Installation.Event.UpdateAvailable.type, (evt) => {
-    toast.show({
-      variant: "info",
-      title: "Update Available",
-      message: `OpenCode v${evt.properties.version} is available. Run 'opencode upgrade' to update manually.`,
-      duration: 10000,
-    })
-  })
 
   // Rate limit handling - track retry state, suggest PayGo with exponential backoff (persisted across sessions)
   if (!rateLimitHandlerRegistered) {

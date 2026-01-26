@@ -71,7 +71,7 @@ export const AuthLoginCommand = cmd({
   describe: "log in to a provider",
   builder: (yargs) =>
     yargs.positional("url", {
-      describe: "opencode auth provider",
+      describe: "auth provider URL",
       type: "string",
     }),
   async handler(args) {
@@ -121,7 +121,7 @@ export const AuthLoginCommand = cmd({
         })
 
         const priority: Record<string, number> = {
-          opencode: 0,
+          cerebras: 0,
           anthropic: 1,
           "github-copilot": 2,
           openai: 3,
@@ -144,7 +144,7 @@ export const AuthLoginCommand = cmd({
                 label: x.name,
                 value: x.id,
                 hint: {
-                  opencode: "recommended",
+                  cerebras: "recommended",
                   anthropic: "Claude Max or API key",
                 }[x.id],
               })),
@@ -307,7 +307,7 @@ export const AuthLoginCommand = cmd({
           provider = provider.replace(/^@ai-sdk\//, "")
           if (prompts.isCancel(provider)) throw new UI.CancelledError()
           prompts.log.warn(
-            `This only stores a credential for ${provider} - you will need configure it in opencode.json, check the docs for examples.`,
+            `This only stores a credential for ${provider} - you will need configure it in oc.json, check the docs for examples.`,
           )
         }
 
@@ -319,8 +319,8 @@ export const AuthLoginCommand = cmd({
           return
         }
 
-        if (provider === "opencode") {
-          prompts.log.info("Create an api key at https://opencode.ai/auth")
+        if (provider === "cerebras") {
+          prompts.log.info("Create an api key at https://cloud.cerebras.ai")
         }
 
         if (provider === "vercel") {

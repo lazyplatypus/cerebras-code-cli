@@ -241,12 +241,6 @@ export function Autocomplete(props: {
           onSelect: () => command.trigger("session.compact"),
         },
         {
-          display: "/unshare",
-          disabled: !s.share,
-          description: "unshare a session",
-          onSelect: () => command.trigger("session.unshare"),
-        },
-        {
           display: "/rename",
           description: "rename session",
           onSelect: () => command.trigger("session.rename"),
@@ -272,14 +266,6 @@ export function Autocomplete(props: {
           onSelect: () => command.trigger("session.toggle.thinking"),
         },
       )
-      if (sync.data.config.share !== "disabled") {
-        results.push({
-          display: "/share",
-          disabled: !!s.share?.url,
-          description: "share a session",
-          onSelect: () => command.trigger("session.share"),
-        })
-      }
     }
 
     results.push(

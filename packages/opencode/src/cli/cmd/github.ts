@@ -180,8 +180,6 @@ export const GithubInstallCommand = cmd({
                 step2,
                 "",
                 "    3. Go to a GitHub issue and comment `/oc summarize` to see the agent in action",
-                "",
-                "   Learn more about the GitHub agent - https://opencode.ai/docs/github/#usage-examples",
               ].join("\n"),
             )
           }
@@ -435,7 +433,7 @@ export const GithubRunCommand = cmd({
           await Session.share(session.id)
           return session.id.slice(-8)
         })()
-        console.log("opencode session", session.id)
+        console.log("Session ID:", session.id)
 
         // Handle 3 cases
         // 1. Issue
@@ -582,7 +580,7 @@ export const GithubRunCommand = cmd({
             }
             return body
           }
-          throw new Error("Comments must mention `/opencode` or `/oc`")
+          throw new Error("Comments must mention `/oc`")
         })()
 
         // Handle images
@@ -706,7 +704,7 @@ export const GithubRunCommand = cmd({
       }
 
       async function chat(message: string, files: PromptFiles = []) {
-        console.log("Sending message to opencode...")
+        console.log("Sending message...")
 
         const result = await SessionPrompt.prompt({
           sessionID: session.id,

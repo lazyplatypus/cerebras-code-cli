@@ -388,7 +388,7 @@ export function Sidebar(props: { sessionID: string }) {
   const directory = useDirectory()
 
   const hasProviders = createMemo(() =>
-    sync.data.provider.some((x) => x.id !== "opencode" || Object.values(x.models).some((y) => y.cost?.input !== 0)),
+    sync.data.provider.some((x) => x.id !== "cerebras" || Object.values(x.models).some((y) => y.cost?.input !== 0)),
   )
 
   return (
@@ -426,9 +426,6 @@ export function Sidebar(props: { sessionID: string }) {
               <text fg={theme.text}>
                 <b>{session().title}</b>
               </text>
-              <Show when={session().share?.url}>
-                <text fg={theme.textMuted}>{session().share!.url}</text>
-              </Show>
             </box>
             <box>
               <text fg={theme.text}>
@@ -682,7 +679,7 @@ export function Sidebar(props: { sessionID: string }) {
                 <text>
                   <b>Getting started</b>
                 </text>
-                <text fg={theme.textMuted}>OpenCode includes free models so you can start immediately.</text>
+                <text fg={theme.textMuted}>Cerebras Code includes free models so you can start immediately.</text>
                 <text fg={theme.textMuted}>
                   Connect from 75+ providers to use other models, including Claude, GPT, Gemini etc
                 </text>
@@ -695,9 +692,9 @@ export function Sidebar(props: { sessionID: string }) {
           </Show>
           <text fg={theme.text}>{directory()}</text>
           <text fg={theme.textMuted}>
-            <span style={{ fg: theme.success }}>•</span> <b>Open</b>
+            <span style={{ fg: theme.success }}>•</span>{" "}
             <span style={{ fg: theme.text }}>
-              <b>Code</b>
+              <b>Cerebras Code</b>
             </span>{" "}
             <span>{Installation.VERSION}</span>
           </text>
