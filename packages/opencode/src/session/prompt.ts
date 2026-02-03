@@ -339,6 +339,53 @@ export namespace SessionPrompt {
           ralphDone = true
         }
       }
+      
+      // Check for switch_mode tool in the LATEST assistant message only
+      // Only trigger if auto_switch_models is enabled and we haven't already switched
+      Config.global.reset()
+      const switchCfg = await Config.getGlobal()
+      const autoSwitchEnabled = switchCfg.auto_switch_models !== false
+      
+      if (autoSwitchEnabled) {
+        const latestAssistantMsg = msgs.filter((m) => m.info.role === "assistant").at(-1)
+        const switchToolCall = latestAssistantMsg?.parts.find(
+          (p) => p.type === "tool" && (p as any).tool === "switch_mode" && (p as any).state?.status === "completed"
+        ) as any
+        
+        if (switchToolCall) {
+          const targetMode = switchToolCall.state?.input?.mode
+          const reason = switchToolCall.state?.input?.reason ?? "Mode switch requested"
+          
+          if (targetMode && lastUser.agent !== targetMode) {
+            const modeModelKey = `${targetMode}_model` as keyof typeof switchCfg
+            const modeModel = (switchCfg as any)[modeModelKey] as string | undefined
+            const targetModel = modeModel ? Provider.parseModel(modeModel) : lastUser.model
+            
+            log.info("switching mode via tool", { from: lastUser.agent, to: targetMode, reason, hasSpecificModel: !!modeModel })
+            
+            const continueMsg = await Session.updateMessage({
+              id: Identifier.ascending("message"),
+              role: "user",
+              sessionID,
+              time: { created: Date.now() },
+              agent: targetMode,
+              model: targetModel,
+            })
+            
+            await Session.updatePart({
+              id: Identifier.ascending("part"),
+              messageID: continueMsg.id,
+              sessionID,
+              type: "text",
+              synthetic: true,
+              text: `Continue with ${targetMode} mode. ${reason}`,
+              time: { start: Date.now(), end: Date.now() },
+            })
+            
+            continue
+          }
+        }
+      }
 
       if (
         lastAssistant?.finish &&
