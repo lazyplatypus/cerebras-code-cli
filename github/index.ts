@@ -8,6 +8,7 @@ import type { Context as GitHubContext } from "@actions/github/lib/context"
 import type { IssueCommentEvent, PullRequestReviewCommentEvent } from "@octokit/webhooks-types"
 import { createOpencodeClient } from "@opencode-ai/sdk"
 import { spawn } from "node:child_process"
+import { consoleLog } from "@opencode-ai/util/console-log"
 
 type GitHubAuthor = {
   login: string
@@ -151,9 +152,9 @@ try {
     await client.session.share<true>({ path: session })
     return session.id.slice(-8)
   })()
-  console.log("opencode session", session.id)
+  consoleLog("opencode session", session.id)
   if (shareId) {
-    console.log("Share link:", `${useShareUrl()}/s/${shareId}`)
+    consoleLog("Share link:", `${useShareUrl()}/s/${shareId}`)
   }
 
   // Handle 3 cases
@@ -401,7 +402,7 @@ async function getAccessToken() {
 
 async function createComment() {
   const { repo } = useContext()
-  console.log("Creating comment...")
+  consoleLog("Creating comment...")
   return await octoRest.rest.issues.createComment({
     owner: repo.owner,
     repo: repo.repo,
@@ -449,7 +450,7 @@ async function getUserPrompt() {
   const mdMatches = prompt.matchAll(/!?\[.*?\]\((https:\/\/github\.com\/user-attachments\/[^)]+)\)/gi)
   const tagMatches = prompt.matchAll(/<img .*?src="(https:\/\/github\.com\/user-attachments\/[^"]+)" \/>/gi)
   const matches = [...mdMatches, ...tagMatches].sort((a, b) => a.index - b.index)
-  console.log("Images", JSON.stringify(matches, null, 2))
+  consoleLog("Images", JSON.stringify(matches, null, 2))
 
   let offset = 0
   for (const m of matches) {
@@ -491,7 +492,7 @@ async function getUserPrompt() {
 }
 
 async function subscribeSessionEvents() {
-  console.log("Subscribing to session events...")
+  consoleLog("Subscribing to session events...")
 
   const TOOL: Record<string, [string, string]> = {
     todowrite: ["Todo", "\x1b[33m\x1b[1m"],
@@ -541,17 +542,17 @@ async function subscribeSessionEvents() {
                   part.state.title || Object.keys(part.state.input).length > 0
                     ? JSON.stringify(part.state.input)
                     : "Unknown"
-                console.log()
-                console.log(color + `|`, "\x1b[0m\x1b[2m" + ` ${tool.padEnd(7, " ")}`, "", "\x1b[0m" + title)
+                consoleLog()
+                consoleLog(color + `|`, "\x1b[0m\x1b[2m" + ` ${tool.padEnd(7, " ")}`, "", "\x1b[0m" + title)
               }
 
               if (part.type === "text") {
                 text = part.text
 
                 if (part.time?.end) {
-                  console.log()
-                  console.log(text)
-                  console.log()
+                  consoleLog()
+                  consoleLog(text)
+                  consoleLog()
                   text = ""
                 }
               }
@@ -566,7 +567,7 @@ async function subscribeSessionEvents() {
           }
         }
       } catch (e) {
-        console.log("Subscribing to session events done", e)
+        consoleLog("Subscribing to session events done", e)
         break
       }
     }
@@ -607,7 +608,7 @@ async function resolveAgent(): Promise<string | undefined> {
 }
 
 async function chat(text: string, files: PromptFiles = []) {
-  console.log("Sending message to opencode...")
+  consoleLog("Sending message to opencode...")
   const { providerID, modelID } = useEnvModel()
   const agent = await resolveAgent()
 
@@ -654,7 +655,7 @@ async function configureGit(appToken: string) {
   // Do not change git config when running locally
   if (isMock()) return
 
-  console.log("Configuring git...")
+  consoleLog("Configuring git...")
   const config = "http.https://github.com/.extraheader"
   const ret = await $`git config --local --get ${config}`
   gitConfig = ret.stdout.toString().trim()
@@ -669,20 +670,20 @@ async function configureGit(appToken: string) {
 
 async function restoreGitConfig() {
   if (gitConfig === undefined) return
-  console.log("Restoring git config...")
+  consoleLog("Restoring git config...")
   const config = "http.https://github.com/.extraheader"
   await $`git config --local ${config} "${gitConfig}"`
 }
 
 async function checkoutNewBranch() {
-  console.log("Checking out new branch...")
+  consoleLog("Checking out new branch...")
   const branch = generateBranchName("issue")
   await $`git checkout -b ${branch}`
   return branch
 }
 
 async function checkoutLocalBranch(pr: GitHubPullRequest) {
-  console.log("Checking out local branch...")
+  consoleLog("Checking out local branch...")
 
   const branch = pr.headRefName
   const depth = Math.max(pr.commits.totalCount, 20)
@@ -692,7 +693,7 @@ async function checkoutLocalBranch(pr: GitHubPullRequest) {
 }
 
 async function checkoutForkBranch(pr: GitHubPullRequest) {
-  console.log("Checking out fork branch...")
+  consoleLog("Checking out fork branch...")
 
   const remoteBranch = pr.headRefName
   const localBranch = generateBranchName("pr")
@@ -714,7 +715,7 @@ function generateBranchName(type: "issue" | "pr") {
 }
 
 async function pushToNewBranch(summary: string, branch: string) {
-  console.log("Pushing to new branch...")
+  consoleLog("Pushing to new branch...")
   const actor = useContext().actor
 
   await $`git add .`
@@ -725,7 +726,7 @@ Co-authored-by: ${actor} <${actor}@users.noreply.github.com>"`
 }
 
 async function pushToLocalBranch(summary: string) {
-  console.log("Pushing to local branch...")
+  consoleLog("Pushing to local branch...")
   const actor = useContext().actor
 
   await $`git add .`
@@ -736,7 +737,7 @@ Co-authored-by: ${actor} <${actor}@users.noreply.github.com>"`
 }
 
 async function pushToForkBranch(summary: string, pr: GitHubPullRequest) {
-  console.log("Pushing to fork branch...")
+  consoleLog("Pushing to fork branch...")
   const actor = useContext().actor
 
   const remoteBranch = pr.headRefName
@@ -749,7 +750,7 @@ Co-authored-by: ${actor} <${actor}@users.noreply.github.com>"`
 }
 
 async function branchIsDirty() {
-  console.log("Checking if branch is dirty...")
+  consoleLog("Checking if branch is dirty...")
   const ret = await $`git status --porcelain`
   return ret.stdout.toString().trim().length > 0
 }
@@ -757,10 +758,10 @@ async function branchIsDirty() {
 async function assertPermissions() {
   const { actor, repo } = useContext()
 
-  console.log(`Asserting permissions for user ${actor}...`)
+  consoleLog(`Asserting permissions for user ${actor}...`)
 
   if (useEnvGithubToken()) {
-    console.log("  skipped (using github token)")
+    consoleLog("  skipped (using github token)")
     return
   }
 
@@ -773,7 +774,7 @@ async function assertPermissions() {
     })
 
     permission = response.data.permission
-    console.log(`  permission: ${permission}`)
+    consoleLog(`  permission: ${permission}`)
   } catch (error) {
     console.error(`Failed to check permissions: ${error}`)
     throw new Error(`Failed to check permissions for user ${actor}: ${error}`)
@@ -785,7 +786,7 @@ async function assertPermissions() {
 async function updateComment(body: string) {
   if (!commentId) return
 
-  console.log("Updating comment...")
+  consoleLog("Updating comment...")
 
   const { repo } = useContext()
   return await octoRest.rest.issues.updateComment({
@@ -797,7 +798,7 @@ async function updateComment(body: string) {
 }
 
 async function createPR(base: string, branch: string, title: string, body: string) {
-  console.log("Creating pull request...")
+  consoleLog("Creating pull request...")
   const { repo } = useContext()
   const truncatedTitle = title.length > 256 ? title.slice(0, 253) + "..." : title
   const pr = await octoRest.rest.pulls.create({
@@ -833,7 +834,7 @@ async function fetchRepo() {
 }
 
 async function fetchIssue() {
-  console.log("Fetching prompt data for issue...")
+  consoleLog("Fetching prompt data for issue...")
   const { repo } = useContext()
   const issueResult = await octoGraph<IssueQueryResponse>(
     `
@@ -898,7 +899,7 @@ function buildPromptDataForIssue(issue: GitHubIssue) {
 }
 
 async function fetchPR() {
-  console.log("Fetching prompt data for PR...")
+  consoleLog("Fetching prompt data for PR...")
   const { repo } = useContext()
   const prResult = await octoGraph<PullRequestQueryResponse>(
     `
@@ -1039,7 +1040,7 @@ function buildPromptDataForPR(pr: GitHubPullRequest) {
 
 async function revokeAppToken() {
   if (!accessToken) return
-  console.log("Revoking app token...")
+  consoleLog("Revoking app token...")
 
   await fetch("https://api.github.com/installation/token", {
     method: "DELETE",

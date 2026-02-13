@@ -5,6 +5,7 @@ import { Identifier } from "@opencode-ai/util/identifier"
 import z from "zod"
 import { Storage } from "./storage"
 import { Binary } from "@opencode-ai/util/binary"
+import { consoleLog } from "@opencode-ai/util/console-log"
 
 export namespace Share {
   export const Info = z.object({
@@ -85,18 +86,18 @@ export namespace Share {
   }
 
   export async function data(shareID: string) {
-    console.log("reading compaction")
+    consoleLog("reading compaction")
     const compaction: Compaction = (await Storage.read<Compaction>(["share_compaction", shareID])) ?? {
       data: [],
       event: undefined,
     }
-    console.log("reading pending events")
+    consoleLog("reading pending events")
     const list = await Storage.list({
       prefix: ["share_event", shareID],
       before: compaction.event,
     }).then((x) => x.toReversed())
 
-    console.log("compacting", list.length)
+    consoleLog("compacting", list.length)
 
     if (list.length > 0) {
       const data = await Promise.all(list.map(async (event) => await Storage.read<Data[]>(event))).then((x) => x.flat())

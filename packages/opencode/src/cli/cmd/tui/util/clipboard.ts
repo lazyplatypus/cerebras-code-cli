@@ -4,6 +4,7 @@ import clipboardy from "clipboardy"
 import { lazy } from "../../../../util/lazy.js"
 import { tmpdir } from "os"
 import path from "path"
+import { Log } from "@/util/log"
 
 /**
  * Writes text to clipboard via OSC 52 escape sequence.
@@ -20,6 +21,8 @@ function writeOsc52(text: string): void {
 }
 
 export namespace Clipboard {
+  const log = Log.create({ service: "tui.clipboard" })
+
   export interface Content {
     data: string
     mime: string
@@ -76,7 +79,7 @@ export namespace Clipboard {
     const os = platform()
 
     if (os === "darwin" && Bun.which("osascript")) {
-      console.log("clipboard: using osascript")
+      log.debug("copy method", { method: "osascript" })
       return async (text: string) => {
         const escaped = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
         await $`osascript -e 'set the clipboard to "${escaped}"'`.nothrow().quiet()
@@ -85,7 +88,7 @@ export namespace Clipboard {
 
     if (os === "linux") {
       if (process.env["WAYLAND_DISPLAY"] && Bun.which("wl-copy")) {
-        console.log("clipboard: using wl-copy")
+        log.debug("copy method", { method: "wl-copy" })
         return async (text: string) => {
           const proc = Bun.spawn(["wl-copy"], { stdin: "pipe", stdout: "ignore", stderr: "ignore" })
           proc.stdin.write(text)
@@ -94,7 +97,7 @@ export namespace Clipboard {
         }
       }
       if (Bun.which("xclip")) {
-        console.log("clipboard: using xclip")
+        log.debug("copy method", { method: "xclip" })
         return async (text: string) => {
           const proc = Bun.spawn(["xclip", "-selection", "clipboard"], {
             stdin: "pipe",
@@ -107,7 +110,7 @@ export namespace Clipboard {
         }
       }
       if (Bun.which("xsel")) {
-        console.log("clipboard: using xsel")
+        log.debug("copy method", { method: "xsel" })
         return async (text: string) => {
           const proc = Bun.spawn(["xsel", "--clipboard", "--input"], {
             stdin: "pipe",
@@ -122,7 +125,7 @@ export namespace Clipboard {
     }
 
     if (os === "win32") {
-      console.log("clipboard: using powershell")
+      log.debug("copy method", { method: "powershell" })
       return async (text: string) => {
         // Pipe via stdin to avoid PowerShell string interpolation ($env:FOO, $(), etc.)
         const proc = Bun.spawn(
@@ -146,7 +149,7 @@ export namespace Clipboard {
       }
     }
 
-    console.log("clipboard: no native support")
+    log.debug("copy method", { method: "clipboardy" })
     return async (text: string) => {
       await clipboardy.write(text).catch(() => {})
     }

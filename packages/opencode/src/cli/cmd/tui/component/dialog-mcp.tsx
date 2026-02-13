@@ -7,6 +7,7 @@ import { useTheme } from "../context/theme"
 import { Keybind } from "@/util/keybind"
 import { TextAttributes } from "@opentui/core"
 import { useSDK } from "@tui/context/sdk"
+import { Log } from "@/util/log"
 
 function Status(props: { enabled: boolean; loading: boolean }) {
   const { theme } = useTheme()
@@ -20,6 +21,7 @@ function Status(props: { enabled: boolean; loading: boolean }) {
 }
 
 export function DialogMcp() {
+  const log = Log.create({ service: "tui.mcp" })
   const local = useLocal()
   const sync = useSync()
   const sdk = useSDK()
@@ -61,10 +63,10 @@ export function DialogMcp() {
           if (status.data) {
             sync.set("mcp", status.data)
           } else {
-            console.error("Failed to refresh MCP status: no data returned")
+            log.error("failed to refresh MCP status: no data returned")
           }
         } catch (error) {
-          console.error("Failed to toggle MCP:", error)
+          log.error("failed to toggle MCP", { error })
         } finally {
           setLoading(null)
         }

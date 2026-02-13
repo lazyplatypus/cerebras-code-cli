@@ -12,10 +12,10 @@ import type {
   Config,
 } from "@opencode-ai/sdk"
 
-import type { BunShell } from "./shell"
-import { type ToolDefinition } from "./tool"
+import type { BunShell } from "./shell.ts"
+import { type ToolDefinition } from "./tool.ts"
 
-export * from "./tool"
+export * from "./tool.ts"
 
 export type ProviderContext = {
   source: "env" | "config" | "custom" | "api"

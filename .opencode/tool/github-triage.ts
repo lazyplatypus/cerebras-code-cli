@@ -1,7 +1,9 @@
 /// <reference path="../env.d.ts" />
 // import { Octokit } from "@octokit/rest"
 import { tool } from "@opencode-ai/plugin"
-import DESCRIPTION from "./github-triage.txt"
+import { readFile } from "fs/promises"
+
+const DESCRIPTION = await readFile(new URL("./github-triage.txt", import.meta.url), "utf8")
 
 function getIssueNumber(): number {
   const issue = parseInt(process.env.ISSUE_NUMBER ?? "", 10)

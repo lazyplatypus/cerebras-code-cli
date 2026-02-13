@@ -56,6 +56,22 @@ mise use -g opencode               # Any OS
 nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev branch
 ```
 
+### Zed (ACP)
+
+If you're using this fork as `cerebras`, you can run the built-in ACP server and connect it to Zed:
+
+```json
+{
+  "agent_servers": {
+    "Cerebras CLI": {
+      "type": "custom",
+      "command": "cerebras",
+      "args": ["acp"]
+    }
+  }
+}
+```
+
 > [!TIP]
 > Remove versions older than 0.1.x before installing.
 
