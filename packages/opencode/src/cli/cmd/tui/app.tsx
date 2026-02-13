@@ -41,6 +41,7 @@ import { ArgsProvider, useArgs, type Args } from "./context/args"
 import open from "open"
 import { writeHeapSnapshot } from "v8"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
+import { Log } from "@/util/log"
 
 async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
   // can't set raw mode if not a TTY
@@ -113,6 +114,7 @@ export function tui(input: {
   events?: EventSource
   onExit?: () => Promise<void>
 }) {
+  const log = Log.create({ service: "tui" })
   // promise to prevent immediate exit
   return new Promise<void>(async (resolve) => {
     const unguard = win32InstallCtrlCGuard()
@@ -188,9 +190,7 @@ export function tui(input: {
         consoleOptions: {
           keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
           onCopySelection: (text) => {
-            Clipboard.copy(text).catch((error) => {
-              console.error(`Failed to copy console selection to clipboard: ${error}`)
-            })
+            Clipboard.copy(text).catch((error) => log.error("failed to copy console selection to clipboard", { error }))
           },
         },
       },
@@ -256,10 +256,6 @@ function App() {
   const [terminalTitleEnabled, setTerminalTitleEnabled] = createSignal(kv.get("terminal_title_enabled", true))
   const [showOnboarding, setShowOnboarding] = createSignal(false)
   const [showQuickStart, setShowQuickStart] = createSignal(false)
-
-  createEffect(() => {
-    console.log(JSON.stringify(route.data))
-  })
 
   // Update terminal window title based on current route and session
   createEffect(() => {

@@ -1,13 +1,14 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 const childProcess = require("child_process")
 const fs = require("fs")
 const path = require("path")
 const os = require("os")
 
-function run(target) {
-  const result = childProcess.spawnSync(target, process.argv.slice(2), {
+function run(target, args = process.argv.slice(2), cwd) {
+  const result = childProcess.spawnSync(target, args, {
     stdio: "inherit",
+    cwd: cwd,
   })
   if (result.error) {
     console.error(result.error.message)
@@ -161,13 +162,21 @@ function findBinary(startDir) {
 }
 
 const resolved = findBinary(scriptDir)
-if (!resolved) {
-  console.error(
-    'It seems that your package manager failed to install the right version of the cerebras CLI for your platform. You can try manually installing the "' +
-      base +
-      '" package',
-  )
-  process.exit(1)
-}
 
-run(resolved)
+// If no compiled binary found, run the TypeScript source directly with Bun
+if (!resolved) {
+  const srcPath = path.join(scriptDir, "..", "src", "index.ts")
+  const pkgDir = path.join(scriptDir, "..")
+  if (fs.existsSync(srcPath)) {
+    run("bun", [srcPath, ...process.argv.slice(2)], pkgDir)
+  } else {
+    console.error(
+      'It seems that your package manager failed to install the right version of the cerebras CLI for your platform. You can try manually installing the "' +
+        base +
+        '" package',
+    )
+    process.exit(1)
+  }
+} else {
+  run(resolved)
+}

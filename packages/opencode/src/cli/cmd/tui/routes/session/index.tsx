@@ -78,6 +78,7 @@ import { QuestionPrompt } from "./question"
 import { DialogExportOptions } from "../../ui/dialog-export-options"
 import { formatTranscript } from "../../util/transcript"
 import { UI } from "@/cli/ui.ts"
+import { Log } from "@/util/log"
 
 addDefaultParsers(parsers.parsers)
 
@@ -109,6 +110,7 @@ function use() {
 }
 
 export function Session() {
+  const log = Log.create({ service: "tui.session" })
   const route = useRouteData("session")
   const { navigate } = useRoute()
   const sync = useSync()
@@ -182,7 +184,7 @@ export function Session() {
         if (scroll) scroll.scrollBy(100_000)
       })
       .catch((e) => {
-        console.error(e)
+        log.error("failed to sync session", { error: e })
         toast.show({
           message: `Session not found: ${route.sessionID}`,
           variant: "error",

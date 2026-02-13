@@ -38,6 +38,7 @@ import zenburn from "./theme/zenburn.json" with { type: "json" }
 import carbonfox from "./theme/carbonfox.json" with { type: "json" }
 import { useKV } from "./kv"
 import { useRenderer } from "@opentui/solid"
+import { Log } from "@/util/log"
 import { createStore, produce } from "solid-js/store"
 import { Global } from "@/global"
 import { Filesystem } from "@/util/filesystem"
@@ -279,6 +280,7 @@ function ansiToRgba(code: number): RGBA {
 export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   name: "Theme",
   init: (props: { mode: "dark" | "light" }) => {
+    const log = Log.create({ service: "tui.theme" })
     const sync = useSync()
     const kv = useKV()
     const [store, setStore] = createStore({
@@ -316,13 +318,12 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     onMount(init)
 
     function resolveSystemTheme() {
-      console.log("resolveSystemTheme")
       renderer
         .getPalette({
           size: 16,
         })
         .then((colors) => {
-          console.log(colors.palette)
+          log.debug("system palette", { palette: colors.palette })
           if (!colors.palette[0]) {
             if (store.active === "system") {
               setStore(
