@@ -1,5 +1,5 @@
-import { Plugin } from "./index"
-import { tool } from "./tool"
+import { Plugin } from "./index.ts"
+import { tool } from "./tool.ts"
 
 export const ExamplePlugin: Plugin = async (ctx) => {
   return {

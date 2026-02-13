@@ -1,6 +1,8 @@
 /// <reference path="../env.d.ts" />
 import { tool } from "@opencode-ai/plugin"
-import DESCRIPTION from "./github-pr-search.txt"
+import { readFile } from "fs/promises"
+
+const DESCRIPTION = await readFile(new URL("./github-pr-search.txt", import.meta.url), "utf8")
 
 async function githubFetch(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(`https://api.github.com${endpoint}`, {

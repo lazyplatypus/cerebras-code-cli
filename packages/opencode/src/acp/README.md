@@ -14,21 +14,11 @@ The implementation follows a clean separation of concerns:
   - Processes prompts and returns responses
   - Properly implements ACP protocol v1
 
-- **`client.ts`** - Implements the `Client` interface for client-side capabilities
-  - File operations (`readTextFile`, `writeTextFile`)
-  - Permission requests (auto-approves for now)
-  - Terminal support (stub implementation)
-
 - **`session.ts`** - Session state management
   - Creates and tracks ACP sessions
   - Maps ACP sessions to internal opencode sessions
   - Maintains working directory context
   - Handles MCP server configurations
-
-- **`server.ts`** - ACP server startup and lifecycle
-  - Sets up JSON-RPC over stdio using the official library
-  - Manages graceful shutdown on SIGTERM/SIGINT
-  - Provides Instance context for the agent
 
 - **`types.ts`** - Type definitions for internal use
 
@@ -38,18 +28,10 @@ The implementation follows a clean separation of concerns:
 
 ```bash
 # Start the ACP server in the current directory
-opencode acp
+cerebras acp
 
 # Start in a specific directory
-opencode acp --cwd /path/to/project
-```
-
-### Programmatic
-
-```typescript
-import { ACPServer } from "./acp/server"
-
-await ACPServer.start()
+cerebras acp --cwd /path/to/project
 ```
 
 ### Integration with Zed
@@ -59,8 +41,9 @@ Add to your Zed configuration (`~/.config/zed/settings.json`):
 ```json
 {
   "agent_servers": {
-    "OpenCode": {
-      "command": "opencode",
+    "Cerebras CLI": {
+      "type": "custom",
+      "command": "cerebras",
       "args": ["acp"]
     }
   }
@@ -123,7 +106,7 @@ This implementation follows the ACP specification v1:
 bun test test/acp.test.ts
 
 # Test manually with stdio
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1}}' | opencode acp
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1}}' | cerebras acp
 ```
 
 ## Design Decisions

@@ -1,6 +1,7 @@
 import { createStore } from "solid-js/store"
 import { createSimpleContext } from "./helper"
 import type { PromptInfo } from "../component/prompt/history"
+import { Log } from "@/util/log"
 
 export type HomeRoute = {
   type: "home"
@@ -18,6 +19,7 @@ export type Route = HomeRoute | SessionRoute
 export const { use: useRoute, provider: RouteProvider } = createSimpleContext({
   name: "Route",
   init: () => {
+    const log = Log.create({ service: "tui.route" })
     const [store, setStore] = createStore<Route>(
       process.env["OPENCODE_ROUTE"]
         ? JSON.parse(process.env["OPENCODE_ROUTE"])
@@ -31,7 +33,7 @@ export const { use: useRoute, provider: RouteProvider } = createSimpleContext({
         return store
       },
       navigate(route: Route) {
-        console.log("navigate", route)
+        log.debug("navigate", { route })
         setStore(route)
       },
     }
