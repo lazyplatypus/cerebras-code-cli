@@ -32,6 +32,7 @@ export namespace Command {
       // https://zod.dev/v4/changelog?id=zfunction
       template: z.promise(z.string()).or(z.string()),
       subtask: z.boolean().optional(),
+      builtin: z.boolean().optional(),
       hints: z.array(z.string()),
     })
     .meta({
@@ -54,6 +55,7 @@ export namespace Command {
   export const Default = {
     INIT: "init",
     REVIEW: "review",
+    DEBUG: "debug",
   } as const
 
   const state = Instance.state(async () => {
@@ -78,6 +80,13 @@ export namespace Command {
         },
         subtask: true,
         hints: hints(PROMPT_REVIEW),
+      },
+      [Default.DEBUG]: {
+        name: Default.DEBUG,
+        description: "export debug info (config, session, logs)",
+        template: "",
+        builtin: true,
+        hints: [],
       },
     }
 

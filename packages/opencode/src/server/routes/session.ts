@@ -799,6 +799,23 @@ export const SessionRoutes = lazy(() =>
       async (c) => {
         const sessionID = c.req.valid("param").sessionID
         const body = c.req.valid("json")
+
+        // Check for built-in commands that execute directly
+        const { BuiltinCommand } = await import("../../command/builtin")
+        const builtinHandler = BuiltinCommand.get(body.command)
+        if (builtinHandler) {
+          const result = await builtinHandler({
+            sessionID,
+            arguments: body.arguments,
+            agent: body.agent ?? "build",
+            model: body.model ?? { providerID: "builtin", modelID: "builtin" },
+          })
+          return c.json({
+            info: result.assistantMessage,
+            parts: result.assistantParts,
+          })
+        }
+
         const msg = await SessionPrompt.command({ ...body, sessionID })
         return c.json(msg)
       },
