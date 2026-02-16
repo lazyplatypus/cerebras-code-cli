@@ -237,7 +237,13 @@ export namespace Agent {
         name: "docs",
         description: "Documentation agent for writing and updating documentation",
         options: {},
-        permission: agentPermission,
+        permission: PermissionNext.merge(
+          defaults,
+          PermissionNext.fromConfig({
+            question: "allow",
+          }),
+          user,
+        ),
         tools: {
           ...defaultTools,
         },
