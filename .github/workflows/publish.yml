@@ -1,271 +1,148 @@
 name: publish
-run-name: "${{ format('release {0}', inputs.bump) }}"
+run-name: "publish ${{ inputs.version }}"
 
 on:
-  push:
-    branches:
-      - ci
-      - dev
-      - beta
-      - snapshot-*
   workflow_dispatch:
     inputs:
-      bump:
-        description: "Bump major, minor, or patch"
-        required: false
-        type: choice
-        options:
-          - major
-          - minor
-          - patch
       version:
-        description: "Override version (optional)"
-        required: false
+        description: "Version to publish (e.g. 1.1.68)"
+        required: true
         type: string
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.version || inputs.bump }}
+concurrency: publish-${{ inputs.version }}
 
 permissions:
   id-token: write
-  contents: write
-  packages: write
+  contents: read
 
 jobs:
-  version:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    if: github.repository == 'anomalyco/opencode'
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - uses: ./.github/actions/setup-bun
-
-      - name: Install OpenCode
-        if: inputs.bump || inputs.version
-        run: bun i -g opencode-ai
-
-      - id: version
-        run: |
-          ./script/version.ts
-        env:
-          GH_TOKEN: ${{ github.token }}
-          OPENCODE_BUMP: ${{ inputs.bump }}
-          OPENCODE_VERSION: ${{ inputs.version }}
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      release: ${{ steps.version.outputs.release }}
-      tag: ${{ steps.version.outputs.tag }}
-
-  build-cli:
-    needs: version
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    if: github.repository == 'anomalyco/opencode'
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-tags: true
-
-      - uses: ./.github/actions/setup-bun
-
-      - name: Build
-        id: build
-        run: |
-          ./packages/opencode/script/build.ts
-        env:
-          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
-          OPENCODE_RELEASE: ${{ needs.version.outputs.release }}
-          GH_TOKEN: ${{ github.token }}
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: opencode-cli
-          path: packages/opencode/dist
-
-    outputs:
-      version: ${{ needs.version.outputs.version }}
-
-  build-tauri:
-    needs:
-      - build-cli
-      - version
-    continue-on-error: false
+  build:
     strategy:
       fail-fast: false
       matrix:
-        settings:
-          - host: macos-latest
-            target: x86_64-apple-darwin
-          - host: macos-latest
-            target: aarch64-apple-darwin
-          - host: blacksmith-4vcpu-windows-2025
-            target: x86_64-pc-windows-msvc
-          - host: blacksmith-4vcpu-ubuntu-2404
-            target: x86_64-unknown-linux-gnu
-          - host: blacksmith-8vcpu-ubuntu-2404-arm
-            target: aarch64-unknown-linux-gnu
-    runs-on: ${{ matrix.settings.host }}
+        include:
+          - os: macos-14
+            target: darwin-arm64
+          - os: macos-13
+            target: darwin-x64
+          - os: ubuntu-latest
+            target: linux-x64
+          - os: ubuntu-24.04-arm
+            target: linux-arm64
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
         with:
-          fetch-tags: true
+          bun-version: "1.3.5"
 
-      - uses: apple-actions/import-codesign-certs@v2
-        if: ${{ runner.os == 'macOS' }}
-        with:
-          keychain: build
-          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
-          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      - run: bun install
 
-      - name: Verify Certificate
-        if: ${{ runner.os == 'macOS' }}
-        run: |
-          CERT_INFO=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application")
-          CERT_ID=$(echo "$CERT_INFO" | awk -F'"' '{print $2}')
-          echo "CERT_ID=$CERT_ID" >> $GITHUB_ENV
-          echo "Certificate imported."
-
-      - name: Setup Apple API Key
-        if: ${{ runner.os == 'macOS' }}
-        run: |
-          echo "${{ secrets.APPLE_API_KEY_PATH }}" > $RUNNER_TEMP/apple-api-key.p8
-
-      - uses: ./.github/actions/setup-bun
-
-      - name: Cache apt packages
-        if: contains(matrix.settings.host, 'ubuntu')
-        uses: actions/cache@v4
-        with:
-          path: /var/cache/apt/archives
-          key: ${{ runner.os }}-${{ matrix.settings.target }}-apt-${{ hashFiles('.github/workflows/publish.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.settings.target }}-apt-
-
-      - name: install dependencies (ubuntu only)
-        if: contains(matrix.settings.host, 'ubuntu')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.settings.target }}
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: packages/desktop/src-tauri
-          shared-key: ${{ matrix.settings.target }}
-
-      - name: Prepare
-        run: |
-          cd packages/desktop
-          bun ./scripts/prepare.ts
+      - name: Build
+        working-directory: packages/opencode
+        run: bun run ./script/build.ts --single
         env:
-          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
-          GITHUB_TOKEN: ${{ steps.committer.outputs.token }}
-          RUST_TARGET: ${{ matrix.settings.target }}
-          GH_TOKEN: ${{ github.token }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
+          OPENCODE_CHANNEL: latest
+          OPENCODE_VERSION: ${{ inputs.version }}
 
-      # Fixes AppImage build issues, can be removed when https://github.com/tauri-apps/tauri/pull/12491 is released
-      - name: Install tauri-cli from portable appimage branch
-        if: contains(matrix.settings.host, 'ubuntu')
+      - name: Smoke test
+        working-directory: packages/opencode
         run: |
-          cargo install tauri-cli --git https://github.com/tauri-apps/tauri --branch feat/truly-portable-appimage --force
-          echo "Installed tauri-cli version:"
-          cargo tauri --version
+          BINARY=$(ls dist/*/bin/cerebras 2>/dev/null || ls dist/*/bin/opencode 2>/dev/null)
+          chmod +x "$BINARY"
+          "$BINARY" --version
 
-      - name: Build and upload artifacts
-        uses: tauri-apps/tauri-action@390cbe447412ced1303d35abe75287949e43437a
-        timeout-minutes: 60
+      - uses: actions/upload-artifact@v4
         with:
-          projectPath: packages/desktop
-          uploadWorkflowArtifacts: true
-          tauriScript: ${{ (contains(matrix.settings.host, 'ubuntu') && 'cargo tauri') || '' }}
-          args: --target ${{ matrix.settings.target }} --config ./src-tauri/tauri.prod.conf.json --verbose
-          updaterJsonPreferNsis: true
-          releaseId: ${{ needs.version.outputs.release }}
-          tagName: ${{ needs.version.outputs.tag }}
-          releaseDraft: true
-          releaseAssetNamePattern: opencode-desktop-[platform]-[arch][ext]
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_BUNDLER_NEW_APPIMAGE_FORMAT: true
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ env.CERT_ID }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_KEY_PATH: ${{ runner.temp }}/apple-api-key.p8
+          name: build-${{ matrix.target }}
+          path: packages/opencode/dist/
 
-  publish:
-    needs:
-      - version
-      - build-cli
-      - build-tauri
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+  publish-binaries:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [darwin-arm64, darwin-x64, linux-x64, linux-arm64]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
-      - uses: actions/checkout@v3
-
-      - uses: ./.github/actions/setup-bun
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: actions/download-artifact@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+          name: build-${{ matrix.target }}
+          path: dist/
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "22"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Setup git committer
-        id: committer
-        uses: ./.github/actions/setup-git-committer
-        with:
-          opencode-app-id: ${{ vars.OPENCODE_APP_ID }}
-          opencode-app-secret: ${{ secrets.OPENCODE_APP_SECRET }}
+      - run: npm install -g npm@latest
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: opencode-cli
-          path: packages/opencode/dist
-
-      - name: Cache apt packages (AUR)
-        uses: actions/cache@v4
-        with:
-          path: /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-aur-${{ hashFiles('.github/workflows/publish.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-apt-aur-
-
-      - name: Setup SSH for AUR
+      - name: Prepare package
         run: |
-          sudo apt-get update
-          sudo apt-get install -y pacman-package-manager
-          mkdir -p ~/.ssh
-          echo "${{ secrets.AUR_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          git config --global user.email "opencode@sst.dev"
-          git config --global user.name "opencode"
-          ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts || true
+          OS=$(echo "${{ matrix.target }}" | cut -d- -f1)
+          ARCH=$(echo "${{ matrix.target }}" | cut -d- -f2)
+          DIR=$(ls -d dist/*-${{ matrix.target }} 2>/dev/null | head -1)
+          cat > "$DIR/package.json" << EOF
+          {
+            "name": "cerebras-cli-${{ matrix.target }}",
+            "version": "${{ inputs.version }}",
+            "os": ["$OS"],
+            "cpu": ["$ARCH"]
+          }
+          EOF
+          chmod -R 755 "$DIR"
 
-      - run: ./script/publish.ts
-        env:
-          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
-          OPENCODE_RELEASE: ${{ needs.version.outputs.release }}
-          AUR_KEY: ${{ secrets.AUR_KEY }}
-          GITHUB_TOKEN: ${{ steps.committer.outputs.token }}
-          NPM_CONFIG_PROVENANCE: false
+      - name: Publish
+        run: |
+          DIR=$(ls -d dist/*-${{ matrix.target }} 2>/dev/null | head -1)
+          cd "$DIR" && npm publish --access public
+
+  publish-wrapper:
+    needs: publish-binaries
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - run: npm install -g npm@latest
+
+      - name: Create wrapper package
+        run: |
+          mkdir -p pkg/bin
+          cp packages/opencode/bin/opencode pkg/bin/opencode
+          cp packages/opencode/bin/opencode.cjs pkg/bin/opencode.cjs
+          cp packages/opencode/script/postinstall.mjs pkg/postinstall.mjs
+          sed -i 's|"opencode-|"cerebras-cli-|g' pkg/bin/opencode
+          sed -i 's|opencode-|cerebras-cli-|g' pkg/postinstall.mjs
+          cat > pkg/package.json << EOF
+          {
+            "name": "cerebras-cli",
+            "version": "${{ inputs.version }}",
+            "description": "Cerebras AI coding agent for the terminal",
+            "bin": {
+              "cerebras-cli": "./bin/opencode"
+            },
+            "scripts": {
+              "postinstall": "bun ./postinstall.mjs || node ./postinstall.mjs"
+            },
+            "optionalDependencies": {
+              "cerebras-cli-darwin-arm64": "${{ inputs.version }}",
+              "cerebras-cli-darwin-x64": "${{ inputs.version }}",
+              "cerebras-cli-linux-arm64": "${{ inputs.version }}",
+              "cerebras-cli-linux-x64": "${{ inputs.version }}"
+            },
+            "license": "MIT"
+          }
+          EOF
+
+      - name: Publish
+        run: cd pkg && npm publish --access public
