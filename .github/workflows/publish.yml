@@ -90,7 +90,11 @@ jobs:
             "name": "cerebras-cli-${{ matrix.target }}",
             "version": "${{ inputs.version }}",
             "os": ["$OS"],
-            "cpu": ["$ARCH"]
+            "cpu": ["$ARCH"],
+            "repository": {
+              "type": "git",
+              "url": "https://github.com/kevint-cerebras/cerebras-code-cli"
+            }
           }
           EOF
           chmod -R 755 "$DIR"
@@ -140,7 +144,11 @@ jobs:
               "cerebras-cli-linux-arm64": "${{ inputs.version }}",
               "cerebras-cli-linux-x64": "${{ inputs.version }}"
             },
-            "license": "MIT"
+            "license": "MIT",
+            "repository": {
+              "type": "git",
+              "url": "https://github.com/kevint-cerebras/cerebras-code-cli"
+            }
           }
           EOF
 
