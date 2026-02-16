@@ -20,8 +20,7 @@
       "packages/*",
       "packages/console/*",
       "packages/sdk/js",
-      "packages/slack",
-      ".opencode"
+      "packages/slack"
     ],
     "catalog": {
       "@types/bun": "1.3.9",
