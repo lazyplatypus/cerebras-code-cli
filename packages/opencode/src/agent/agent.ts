@@ -171,15 +171,13 @@ export namespace Agent {
         mode: "subagent",
         native: true,
       },
-      ralph: {
-        name: "ralph",
-        description:
-          "Autonomous loop agent that iterates on a task until complete. Best for large refactors, migrations, and multi-step tasks with clear done criteria.",
+      docs: {
+        name: "docs",
+        description: "Documentation agent for writing and updating documentation.",
         options: {},
         permission: PermissionNext.merge(
           defaults,
           PermissionNext.fromConfig({
-            loopcomplete: "allow",
             question: "allow",
           }),
           user,
