@@ -233,23 +233,6 @@ export namespace Agent {
         ),
         prompt: PROMPT_SUMMARY,
       },
-      docs: {
-        name: "docs",
-        description: "Documentation agent for writing and updating documentation",
-        options: {},
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            question: "allow",
-          }),
-          user,
-        ),
-        tools: {
-          ...defaultTools,
-        },
-        mode: "primary",
-        builtIn: true,
-      },
     }
 
     for (const [key, value] of Object.entries(cfg.agent ?? {})) {
