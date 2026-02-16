@@ -122,10 +122,15 @@ jobs:
       - name: Create wrapper package
         run: |
           mkdir -p pkg/bin
-          cp packages/opencode/bin/opencode pkg/bin/opencode
-          cp packages/opencode/bin/opencode.cjs pkg/bin/opencode.cjs
+          # Copy whichever bin wrapper exists (cerebras or opencode)
+          if [ -f packages/opencode/bin/cerebras ]; then
+            cp packages/opencode/bin/cerebras pkg/bin/cerebras
+          elif [ -f packages/opencode/bin/opencode ]; then
+            cp packages/opencode/bin/opencode pkg/bin/cerebras
+          fi
+          [ -f packages/opencode/bin/opencode.cjs ] && cp packages/opencode/bin/opencode.cjs pkg/bin/opencode.cjs || true
           cp packages/opencode/script/postinstall.mjs pkg/postinstall.mjs
-          sed -i 's|"opencode-|"cerebras-cli-|g' pkg/bin/opencode
+          sed -i 's|"opencode-|"cerebras-cli-|g' pkg/bin/cerebras
           sed -i 's|opencode-|cerebras-cli-|g' pkg/postinstall.mjs
           cat > pkg/package.json << EOF
           {
@@ -133,7 +138,7 @@ jobs:
             "version": "${{ inputs.version }}",
             "description": "Cerebras AI coding agent for the terminal",
             "bin": {
-              "cerebras-cli": "./bin/opencode"
+              "cerebras-cli": "./bin/cerebras"
             },
             "scripts": {
               "postinstall": "bun ./postinstall.mjs || node ./postinstall.mjs"
