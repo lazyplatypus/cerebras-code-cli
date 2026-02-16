@@ -46,12 +46,32 @@ jobs:
           OPENCODE_CHANNEL: latest
           OPENCODE_VERSION: ${{ inputs.version }}
 
-      - name: Smoke test
+      - name: Smoke test - version
         working-directory: packages/opencode
         run: |
           BINARY=$(ls dist/*/bin/cerebras 2>/dev/null || ls dist/*/bin/opencode 2>/dev/null)
           chmod +x "$BINARY"
           "$BINARY" --version
+
+      - name: Smoke test - help
+        working-directory: packages/opencode
+        run: |
+          BINARY=$(ls dist/*/bin/cerebras 2>/dev/null || ls dist/*/bin/opencode 2>/dev/null)
+          "$BINARY" --help
+
+      - name: Smoke test - server starts and agents load
+        working-directory: packages/opencode
+        run: |
+          BINARY=$(ls dist/*/bin/cerebras 2>/dev/null || ls dist/*/bin/opencode 2>/dev/null)
+          # Start headless server briefly to verify agents/config load without crash
+          timeout 10 "$BINARY" serve --port 0 2>&1 || EXIT=$?
+          # timeout returns 124 on timeout (expected - server runs until killed)
+          # Any other non-zero exit means a crash
+          if [ "${EXIT:-124}" -ne 124 ] && [ "${EXIT:-0}" -ne 0 ]; then
+            echo "Server crashed with exit code $EXIT"
+            exit 1
+          fi
+          echo "Server started and loaded successfully"
 
       - uses: actions/upload-artifact@v4
         with:
