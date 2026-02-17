@@ -1,0 +1,152 @@
+name: release
+run-name: "release ${{ inputs.version }} (${{ inputs.channel }})"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 1.1.75)"
+        required: true
+        type: string
+      channel:
+        description: "Release channel"
+        required: true
+        type: choice
+        options:
+          - next
+          - latest
+        default: next
+
+concurrency: release-${{ inputs.version }}
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create GitHub release (draft)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          cat > /tmp/release-notes.md << 'NOTES'
+          ## Install
+
+          ```bash
+          curl -fsSL https://raw.githubusercontent.com/kevint-cerebras/cerebras-code-cli/refs/heads/dev/install | bash
+          ```
+
+          Or with npm:
+
+          ```bash
+          npm install -g cerebras-cli
+          ```
+          NOTES
+
+          PRERELEASE_FLAG=""
+          if [ "$CHANNEL" = "next" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release create "v${VERSION}" \
+            --title "v${VERSION}" \
+            --draft \
+            $PRERELEASE_FLAG \
+            --notes-file /tmp/release-notes.md
+
+  build:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: darwin-arm64
+          - os: macos-13
+            target: darwin-x64
+          - os: ubuntu-latest
+            target: linux-x64
+          - os: ubuntu-24.04-arm
+            target: linux-arm64
+          - os: windows-latest
+            target: windows-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.9"
+
+      - run: bun install
+
+      - name: Build and upload to GitHub release
+        working-directory: packages/opencode
+        run: bun run ./script/build.ts --single
+        env:
+          OPENCODE_CHANNEL: ${{ inputs.channel }}
+          OPENCODE_VERSION: ${{ inputs.version }}
+          OPENCODE_RELEASE: "true"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Smoke test - version
+        working-directory: packages/opencode
+        shell: bash
+        run: |
+          BINARY=$(ls dist/*/bin/cerebras* 2>/dev/null | head -1)
+          chmod +x "$BINARY" 2>/dev/null || true
+          "$BINARY" --version
+
+      - name: Smoke test - help
+        working-directory: packages/opencode
+        shell: bash
+        run: |
+          BINARY=$(ls dist/*/bin/cerebras* 2>/dev/null | head -1)
+          "$BINARY" --help
+
+      - name: Smoke test - server starts
+        if: matrix.os != 'windows-latest'
+        working-directory: packages/opencode
+        shell: bash
+        run: |
+          BINARY=$(ls dist/*/bin/cerebras* 2>/dev/null | head -1)
+          "$BINARY" serve --port 0 &
+          PID=$!
+          sleep 5
+          if kill -0 $PID 2>/dev/null; then
+            echo "Server ran for 5s without crashing"
+            kill $PID 2>/dev/null || true
+          else
+            wait $PID 2>/dev/null || true
+            echo "Server crashed"
+            exit 1
+          fi
+
+  publish-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish release
+        run: gh release edit "v${{ inputs.version }}" --draft=false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## Released cerebras v${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Channel:** \`${{ inputs.channel }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Install" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "curl -fsSL https://raw.githubusercontent.com/kevint-cerebras/cerebras-code-cli/refs/heads/dev/install | bash" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**GitHub Release:** https://github.com/kevint-cerebras/cerebras-code-cli/releases/tag/v${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
