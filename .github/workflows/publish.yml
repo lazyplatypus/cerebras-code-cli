@@ -63,15 +63,17 @@ jobs:
         working-directory: packages/opencode
         run: |
           BINARY=$(ls dist/*/bin/cerebras 2>/dev/null || ls dist/*/bin/opencode 2>/dev/null)
-          # Start headless server briefly to verify agents/config load without crash
-          timeout 10 "$BINARY" serve --port 0 2>&1 || EXIT=$?
-          # timeout returns 124 on timeout (expected - server runs until killed)
-          # Any other non-zero exit means a crash
-          if [ "${EXIT:-124}" -ne 124 ] && [ "${EXIT:-0}" -ne 0 ]; then
-            echo "Server crashed with exit code $EXIT"
+          "$BINARY" serve --port 0 &
+          PID=$!
+          sleep 5
+          if kill -0 $PID 2>/dev/null; then
+            echo "Server ran for 5s without crashing"
+            kill $PID 2>/dev/null || true
+          else
+            wait $PID 2>/dev/null || true
+            echo "Server crashed"
             exit 1
           fi
-          echo "Server started and loaded successfully"
 
       - uses: actions/upload-artifact@v4
         with:
