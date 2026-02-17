@@ -15,6 +15,7 @@ import { SDKProvider, useSDK } from "@tui/context/sdk"
 import { SyncProvider, useSync } from "@tui/context/sync"
 import { LocalProvider, useLocal } from "@tui/context/local"
 import { DialogModel, useConnected } from "@tui/component/dialog-model"
+import { DialogSettings } from "@tui/component/dialog-settings"
 import { DialogMcp } from "@tui/component/dialog-mcp"
 import { DialogStatus } from "@tui/component/dialog-status"
 import { DialogThemeList } from "@tui/component/dialog-theme-list"
@@ -510,6 +511,17 @@ function App() {
       hidden: true,
       onSelect: () => {
         local.model.cycleFavorite(-1)
+      },
+    },
+    {
+      title: "Agent default models",
+      value: "settings",
+      category: "Agent",
+      slash: {
+        name: "settings",
+      },
+      onSelect: () => {
+        dialog.replace(() => <DialogSettings />)
       },
     },
     {
