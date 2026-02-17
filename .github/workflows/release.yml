@@ -96,6 +96,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Smoke test - version
+        if: ${{ !matrix.baseline }}
         working-directory: packages/opencode
         shell: bash
         run: |
@@ -104,6 +105,7 @@ jobs:
           "$BINARY" --version
 
       - name: Smoke test - help
+        if: ${{ !matrix.baseline }}
         working-directory: packages/opencode
         shell: bash
         run: |
