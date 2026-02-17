@@ -21,12 +21,6 @@
         "turbo": "2.5.6",
       },
     },
-    ".opencode": {
-      "name": "@opencode-ai/dev-tools",
-      "dependencies": {
-        "@opencode-ai/plugin": "workspace:*",
-      },
-    },
     "packages/app": {
       "name": "@opencode-ai/app",
       "version": "1.1.63",
@@ -1260,8 +1254,6 @@
     "@opencode-ai/console-resource": ["@opencode-ai/console-resource@workspace:packages/console/resource"],
 
     "@opencode-ai/desktop": ["@opencode-ai/desktop@workspace:packages/desktop"],
-
-    "@opencode-ai/dev-tools": ["@opencode-ai/dev-tools@workspace:.opencode"],
 
     "@opencode-ai/enterprise": ["@opencode-ai/enterprise@workspace:packages/enterprise"],
 

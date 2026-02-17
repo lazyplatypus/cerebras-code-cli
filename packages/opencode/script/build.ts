@@ -180,14 +180,17 @@ for (const item of targets) {
 }
 
 if (Script.release) {
+  const artifacts: string[] = []
   for (const key of Object.keys(binaries)) {
     if (key.includes("linux")) {
       await $`tar -czf ../../${key}.tar.gz *`.cwd(`dist/${key}/bin`)
+      artifacts.push(`./dist/${key}.tar.gz`)
     } else {
       await $`zip -r ../../${key}.zip *`.cwd(`dist/${key}/bin`)
+      artifacts.push(`./dist/${key}.zip`)
     }
   }
-  await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz --clobber`
+  await $`gh release upload v${Script.version} ${artifacts} --clobber`
 }
 
 export { binaries }
