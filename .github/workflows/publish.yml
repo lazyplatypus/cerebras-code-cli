@@ -37,6 +37,9 @@ jobs:
             target: linux-x64
           - os: ubuntu-24.04-arm
             target: linux-arm64
+          - os: ubuntu-latest
+            target: linux-x64-baseline
+            baseline: true
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +52,7 @@ jobs:
 
       - name: Build
         working-directory: packages/opencode
-        run: bun run ./script/build.ts --single
+        run: bun run ./script/build.ts --single ${{ matrix.baseline && '--baseline' || '' }}
         env:
           OPENCODE_CHANNEL: ${{ inputs.channel }}
           OPENCODE_VERSION: ${{ inputs.version }}
@@ -68,6 +71,7 @@ jobs:
           "$BINARY" --help
 
       - name: Smoke test - server starts and agents load
+        if: ${{ !matrix.baseline }}
         working-directory: packages/opencode
         run: |
           BINARY=$(ls dist/*/bin/cerebras 2>/dev/null || ls dist/*/bin/opencode 2>/dev/null)
@@ -93,7 +97,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [darwin-arm64, darwin-x64, linux-x64, linux-arm64]
+        target: [darwin-arm64, darwin-x64, linux-x64, linux-arm64, linux-x64-baseline]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -176,7 +180,8 @@ jobs:
               "cerebras-cli-darwin-arm64": "${{ inputs.version }}",
               "cerebras-cli-darwin-x64": "${{ inputs.version }}",
               "cerebras-cli-linux-arm64": "${{ inputs.version }}",
-              "cerebras-cli-linux-x64": "${{ inputs.version }}"
+              "cerebras-cli-linux-x64": "${{ inputs.version }}",
+              "cerebras-cli-linux-x64-baseline": "${{ inputs.version }}"
             },
             "license": "MIT",
             "repository": {
