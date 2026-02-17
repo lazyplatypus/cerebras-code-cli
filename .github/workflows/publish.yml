@@ -1,13 +1,21 @@
 name: publish
-run-name: "publish ${{ inputs.version }}"
+run-name: "publish ${{ inputs.version }} (${{ inputs.channel }})"
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to publish (e.g. 1.1.68)"
+        description: "Version to publish (e.g. 1.1.75)"
         required: true
         type: string
+      channel:
+        description: "Release channel"
+        required: true
+        type: choice
+        options:
+          - next
+          - latest
+        default: next
 
 concurrency: publish-${{ inputs.version }}
 
@@ -43,7 +51,7 @@ jobs:
         working-directory: packages/opencode
         run: bun run ./script/build.ts --single
         env:
-          OPENCODE_CHANNEL: latest
+          OPENCODE_CHANNEL: ${{ inputs.channel }}
           OPENCODE_VERSION: ${{ inputs.version }}
 
       - name: Smoke test - version
@@ -124,7 +132,7 @@ jobs:
       - name: Publish
         run: |
           DIR=$(ls -d dist/*-${{ matrix.target }} 2>/dev/null | head -1)
-          cd "$DIR" && npm publish --access public
+          cd "$DIR" && npm publish --access public --tag ${{ inputs.channel }}
 
   publish-wrapper:
     needs: publish-binaries
@@ -144,7 +152,6 @@ jobs:
       - name: Create wrapper package
         run: |
           mkdir -p pkg/bin
-          # Copy whichever bin wrapper exists (cerebras or opencode)
           if [ -f packages/opencode/bin/cerebras ]; then
             cp packages/opencode/bin/cerebras pkg/bin/cerebras
           elif [ -f packages/opencode/bin/opencode ]; then
@@ -180,4 +187,24 @@ jobs:
           EOF
 
       - name: Publish
-        run: cd pkg && npm publish --access public
+        run: cd pkg && npm publish --access public --tag ${{ inputs.channel }}
+
+      - name: Summary
+        run: |
+          echo "## Published cerebras-cli@${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Channel:** \`${{ inputs.channel }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.channel }}" = "next" ]; then
+            echo "### Test it" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "npm install -g cerebras-cli@${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Promote to latest" >> $GITHUB_STEP_SUMMARY
+            echo "Once verified, re-run this workflow with the same version and channel **latest**." >> $GITHUB_STEP_SUMMARY
+          else
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "npm install -g cerebras-cli" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
