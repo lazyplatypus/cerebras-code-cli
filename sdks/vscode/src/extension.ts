@@ -59,6 +59,7 @@ export function activate(context: vscode.ExtensionContext) {
       env: {
         _EXTENSION_OPENCODE_PORT: port.toString(),
         OPENCODE_CALLER: "vscode",
+        OPENCODE_THEME: vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Light || vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrastLight ? "light" : "dark",
       },
     })
 
