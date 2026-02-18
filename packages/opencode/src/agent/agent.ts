@@ -13,6 +13,7 @@ import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
+import PROMPT_ASK from "./prompt/ask.txt"
 import PROMPT_DOCS from "./prompt/docs.txt"
 import { PermissionNext } from "@/permission/next"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
@@ -184,6 +185,29 @@ export namespace Agent {
           user,
         ),
         prompt: PROMPT_DOCS,
+        mode: "primary",
+        native: true,
+      },
+      ask: {
+        name: "ask",
+        description: "Read-only Q&A agent for answering questions about your codebase without modifying files.",
+        options: {},
+        permission: PermissionNext.merge(
+          defaults,
+          PermissionNext.fromConfig({
+            "*": "deny",
+            read: "allow",
+            grep: "allow",
+            glob: "allow",
+            list: "allow",
+            codesearch: "allow",
+            webfetch: "allow",
+            websearch: "allow",
+            question: "allow",
+          }),
+          user,
+        ),
+        prompt: PROMPT_ASK,
         mode: "primary",
         native: true,
       },
